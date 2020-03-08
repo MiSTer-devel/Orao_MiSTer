@@ -18,11 +18,11 @@ To access basic, type BC and press enter, then again enter when asked about memo
 ```
 ![img](img/uputa.gif)
 
-To load a program, type:
+To load a program, press F12, select Load *.TAP and choose the desired file. It gets copied into the tape buffer and becomes available to the Orao loader routine. Next, you simply need to type:
 ```
 LMEM ""
 ```
-and press enter. Then press F12, select load and find the file to upload.
+and press enter. Wait a bit and - voila!
 
 Please note the sound of audio tape is played during loading, you might want to **turn down your audio volume first**.
 
