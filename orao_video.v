@@ -6,6 +6,8 @@ module orao_video
    output reg     HSync,
    output reg     VSync,
    output reg     de,
+	output reg     HBlank,
+	output reg     VBlank,
 
    output reg [12:0]  video_addr,   // Video RAM intf
    input  [7:0]   video_data,
@@ -41,7 +43,10 @@ always @(posedge clk) begin
    video_addr <= {screen_y[8:1], screen_x[8:4]};
 
    pix <= (hc > 11'd144 && vc > 11'd43 && hc < 11'd656 && vc < 11'd556) ? video_data[screen_x[3:1] - 1'b1] : 1'b0;
-   de <= ((hc < 11'd800) && (vc < 11'd600));       
+   de <= ((hc < 11'd800) && (vc < 11'd600));    
+
+	HBlank <= hc > 11'd800;
+	VBlank <= vc > 11'd600;
    
 end
 

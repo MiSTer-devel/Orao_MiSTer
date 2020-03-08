@@ -22,75 +22,106 @@
 
 module emu
 (
-   //Master input clock
-   input         CLK_50M,
+	//Master input clock
+	input         CLK_50M,
 
-   //Async reset from top-level module.
-   //Can be used as initial reset.
-   input         RESET,
+	//Async reset from top-level module.
+	//Can be used as initial reset.
+	input         RESET,
 
-   //Must be passed to hps_io module
-   inout  [44:0] HPS_BUS,
+	//Must be passed to hps_io module
+	inout  [45:0] HPS_BUS,
 
-   //Base video clock. Usually equals to CLK_SYS.
-   output        CLK_VIDEO,
+	//Base video clock. Usually equals to CLK_SYS.
+	output        CLK_VIDEO,
 
-   //Multiple resolutions are supported using different CE_PIXEL rates.
-   //Must be based on CLK_VIDEO
-   output        CE_PIXEL,
+	//Multiple resolutions are supported using different CE_PIXEL rates.
+	//Must be based on CLK_VIDEO
+	output        CE_PIXEL,
 
-   //Video aspect ratio for HDMI. Most retro systems have ratio 4:3.
-   output  [7:0] VIDEO_ARX,
-   output  [7:0] VIDEO_ARY,
+	//Video aspect ratio for HDMI. Most retro systems have ratio 4:3.
+	output  [7:0] VIDEO_ARX,
+	output  [7:0] VIDEO_ARY,
 
-   output  [7:0] VGA_R,
-   output  [7:0] VGA_G,
-   output  [7:0] VGA_B,
-   output        VGA_HS,
-   output        VGA_VS,
-   output        VGA_DE,    // = ~(VBlank | HBlank)
-   
-   output        HDMI_CLK,               /* Equals CLK_VIDEO */
-   output        HDMI_CE,                /* Equals CE_PIXEL */
-   output  [7:0] HDMI_R,
-   output  [7:0] HDMI_G,
-   output  [7:0] HDMI_B,
-   output        HDMI_HS,
-   output        HDMI_VS,
-   output        HDMI_DE,                /* Equals VGA_DE */
-   output  [1:0] HDMI_SL,                /* Scanlines fx */
+	output  [7:0] VGA_R,
+	output  [7:0] VGA_G,
+	output  [7:0] VGA_B,
+	output        VGA_HS,
+	output        VGA_VS,
+	output        VGA_DE,    // = ~(VBlank | HBlank)
+	output        VGA_F1,
+	output  [1:0] VGA_SL,
 
-   output        LED_USER,  // 1 - ON, 0 - OFF.
+	output        LED_USER,  // 1 - ON, 0 - OFF.
 
-   // b[1]: 0 - LED status is system status ORed with b[0]
-   //       1 - LED status is controled solely by b[0]
-   // hint: supply 2'b00 to let the system control the LED.
-   output  [1:0] LED_POWER,
-   output  [1:0] LED_DISK,
+	// b[1]: 0 - LED status is system status OR'd with b[0]
+	//       1 - LED status is controled solely by b[0]
+	// hint: supply 2'b00 to let the system control the LED.
+	output  [1:0] LED_POWER,
+	output  [1:0] LED_DISK,
 
-   output [15:0] AUDIO_L,
-   output [15:0] AUDIO_R,
-   output        AUDIO_S, // 1 - signed audio samples, 0 - unsigned
-   input         TAPE_IN,
+	// I/O board button press simulation (active high)
+	// b[1]: user button
+	// b[0]: osd button
+	output  [1:0] BUTTONS,
 
-   // SD-SPI
-   output        SD_SCK,
-   output        SD_MOSI,
-   input         SD_MISO,
-   output        SD_CS,
+	output [15:0] AUDIO_L,
+	output [15:0] AUDIO_R,
+	output        AUDIO_S,   // 1 - signed audio samples, 0 - unsigned
+	output  [1:0] AUDIO_MIX, // 0 - no mix, 1 - 25%, 2 - 50%, 3 - 100% (mono)
 
-   //SDRAM interface with lower latency
-   output        SDRAM_CLK,
-   output        SDRAM_CKE,
-   output [12:0] SDRAM_A,
-   output  [1:0] SDRAM_BA,
-   inout  [15:0] SDRAM_DQ,
-   output        SDRAM_DQML,
-   output        SDRAM_DQMH,
-   output        SDRAM_nCS,
-   output        SDRAM_nCAS,
-   output        SDRAM_nRAS,
-   output        SDRAM_nWE
+	//ADC
+	inout   [3:0] ADC_BUS,
+
+	//SD-SPI
+	output        SD_SCK,
+	output        SD_MOSI,
+	input         SD_MISO,
+	output        SD_CS,
+	input         SD_CD,
+
+	//High latency DDR3 RAM interface
+	//Use for non-critical time purposes
+	output        DDRAM_CLK,
+	input         DDRAM_BUSY,
+	output  [7:0] DDRAM_BURSTCNT,
+	output [28:0] DDRAM_ADDR,
+	input  [63:0] DDRAM_DOUT,
+	input         DDRAM_DOUT_READY,
+	output        DDRAM_RD,
+	output [63:0] DDRAM_DIN,
+	output  [7:0] DDRAM_BE,
+	output        DDRAM_WE,
+
+	//SDRAM interface with lower latency
+	output        SDRAM_CLK,
+	output        SDRAM_CKE,
+	output [12:0] SDRAM_A,
+	output  [1:0] SDRAM_BA,
+	inout  [15:0] SDRAM_DQ,
+	output        SDRAM_DQML,
+	output        SDRAM_DQMH,
+	output        SDRAM_nCS,
+	output        SDRAM_nCAS,
+	output        SDRAM_nRAS,
+	output        SDRAM_nWE,
+
+	input         UART_CTS,
+	output        UART_RTS,
+	input         UART_RXD,
+	output        UART_TXD,
+	output        UART_DTR,
+	input         UART_DSR,
+
+	// Open-drain User port.
+	// 0 - D+/RX
+	// 1 - D-/TX
+	// 2..6 - USR2..USR6
+	// Set USER_OUT to 1 to read from USER_IN.
+	input   [6:0] USER_IN,
+	output  [6:0] USER_OUT,
+
+	input         OSD_STATUS
 );
 
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
@@ -100,6 +131,9 @@ assign LED_USER  = ioctl_download;
 assign LED_DISK  = 0;
 assign LED_POWER = 0;
 
+assign USER_OUT  = '1;
+assign VGA_F1    = 0;
+
 assign VIDEO_ARX = status[1] ? 8'd16 : 8'd4;
 assign VIDEO_ARY = status[1] ? 8'd9  : 8'd3; 
 
@@ -108,33 +142,21 @@ localparam CONF_STR =
 {
    "ORAO;;",
    "-;",
-   "F,WAV;",
+   "F,TAP;",
    "-;",
-   "O2,Screen Color,White,Green;",
+	"O2,Screen Color,White,Green;",
    "O1,Aspect Ratio,4:3,16:9;",
    "-;",
    "T6,Reset;",
-   "V,v0.8.",`BUILD_DATE
+   "V,v0.9.",`BUILD_DATE
 };
 
 ////////////////////   CLOCKS   ///////////////////
 
 wire clk_sys;
-wire pll_locked;
-
 assign clk_sys = CLK_50M;
-
-assign HDMI_CLK = CLK_VIDEO;
-assign HDMI_CE  = 1'b1;
-assign HDMI_R   = VGA_R;
-assign HDMI_G   = VGA_G;
-assign HDMI_B   = VGA_B;
-assign HDMI_DE  = VGA_DE;
-assign HDMI_HS  = VGA_HS;
-assign HDMI_VS  = VGA_VS;
-assign HDMI_SL  = 0;
-     
 reg reset = 1;
+
 always @(posedge clk_sys) begin
    integer   initRESET = 20000000;
    reg [3:0] reset_cnt;
@@ -150,15 +172,18 @@ end
 
 reg  ce_1m;
 
-always @(negedge clk_sys) begin
+always @(posedge clk_sys) begin
    reg  [6:0] cpu_div = 0;
-   reg  [6:0] cpu_rate = 7'd49;     // For a 50 MHz clock
+   reg  [6:0] cpu_rate = 7'd50;     // For a 50 MHz clock
 
-   cpu_div <= cpu_div + 1'd1;
-   if(cpu_div == cpu_rate) 
+   if(cpu_div == cpu_rate) begin
       cpu_div  <= 0;
+	end
+	else
+		cpu_div <= cpu_div + 1'd1;
+   
       
-   ce_1m <= !cpu_div;
+   ce_1m <= (cpu_div == 7'd8);
 end
 
 
@@ -172,13 +197,13 @@ wire  [1:0] buttons;
 wire        ioctl_download;
 wire  [7:0] ioctl_index;
 wire        ioctl_wr;
-wire [24:0] ioctl_addr;
+wire [26:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
-wire        ioctl_wait;
+wire [31:0] ioctl_file_ext;
 
 wire [10:0] ps2_key;
 
-hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
+hps_io #(.STRLEN($size(CONF_STR)>>3), .WIDE(0)) hps_io
 (
    .clk_sys(clk_sys),
    .HPS_BUS(HPS_BUS),
@@ -195,7 +220,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
    .ioctl_wr(ioctl_wr),
    .ioctl_addr(ioctl_addr),
    .ioctl_dout(ioctl_dout),
-   .ioctl_wait(ioctl_wait)
+   .ioctl_wait(0)
 );
 
 
@@ -213,7 +238,7 @@ wire irq;
 cpu6502 cpu
 (
    .clk(clk_sys),
-   .ce(ce_1m),
+   .ce(ce_1m & (~ioctl_download)),
    .reset(reset),
    .nmi(0),
    .irq(irq),
@@ -228,22 +253,22 @@ cpu6502 cpu
 ///////////////////////////////////////////////////
 
 wire pix;
-wire HSync, VSync;
+wire HSync, VSync, HBlank, VBlank;
 wire audioDat;
 
 assign VGA_G = {8{pix}};
-assign VGA_R = status[2] ? 3'd0 : VGA_G;
+assign VGA_R = status[2] ? 8'd0 : VGA_G;
 assign VGA_B = VGA_R;
-assign VGA_HS = HSync;
-assign VGA_VS = VSync;
 
-assign CLK_VIDEO = CLK_50M;
+assign CLK_VIDEO = clk_sys;
 assign CE_PIXEL  = 1'b1;
 
 orao_hw hw
 (
    .*,
-   .clk(CLK_50M),
+	.HSync(VGA_HS),
+	.VSync(VGA_VS),
+   .clk(clk_sys),
 
    .data_out(cpu_data_in),
    .data_in(cpu_data_out),
@@ -262,7 +287,7 @@ orao_hw hw
 assign AUDIO_S = 1'b0;
 wire audio = {audioDat ^ (ioctl_download & ioctl_dout[6])};
 
-assign AUDIO_L = { audio, audio, audio, 11'b0};
+assign AUDIO_L = { audio, 3'b0, audio, 9'b0};
 assign AUDIO_R = AUDIO_L;
 
 endmodule

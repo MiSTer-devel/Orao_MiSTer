@@ -41,9 +41,8 @@ module orao_io
    input         ioctl_download,
    input   [7:0] ioctl_index,
    input         ioctl_wr,
-   input  [24:0] ioctl_addr,
+   input  [26:0] ioctl_addr,
    input   [7:0] ioctl_dout,
-   output reg    ioctl_wait,
    
    output        video_blank,    // Video controls
    input         video_sync,
@@ -52,8 +51,7 @@ module orao_io
 
    input         ce,
    input         clk,
-   input         reset
-   
+   input         reset  
 );
 
 //////////////////////////////////////////////////////////////////////
@@ -61,7 +59,6 @@ module orao_io
 //////////////////////////////////////////////////////////////////////
 wire  [7:0] kbd_data_out, tape_data_out;
 
-reg [24:0] old_ioctl_addr;
 reg [15:0] old_read_addr;
 
 keyboard keyboard(.*,
@@ -69,54 +66,60 @@ keyboard keyboard(.*,
                   );
 
 reg old_ioctl_wr, old_ioctl_download;
-reg read_counter;
 
-reg [31:0] timeout = 0;                                              // Provides a control mechanism to abort a "stuck" tape download
+reg [24:0] read_counter = 0;
 
 //////////////////////////////////////////////////////////////////////
 // Memory address space demultiplex and tape interface
 //////////////////////////////////////////////////////////////////////
 
-always @(posedge clk) begin
-   old_ioctl_addr <= ioctl_addr;
-   old_read_addr <= addr;  
-   old_ioctl_download <= ioctl_download;										// Used to detect transitions
-	
-   timeout <= timeout + 1'b1;
+wire [7:0] tape_buf_out;
    
-   if(~old_ioctl_download && ioctl_download)									// Detect start of download
-       timeout <= 32'b0;
-			
-   if (old_ioctl_addr != ioctl_addr) begin								   // Detect when userspace sends us a new byte
-      ioctl_wait <= 1'b1;
-      tape_data_out <= ioctl_dout > 8'h7f ? 8'hff : 8'h0;				// Comparator. Set to all ones or zeros, depending what's closer.
+orao_tape_buf_ram tape_buf_ram(
+   .address_a(ioctl_addr),
+   .clock(clk),
+   .data_a(ioctl_dout),
+   .wren_a(ioctl_wr && ioctl_download),
+   
+   .address_b(read_counter[24:9]),
+   .wren_b(0),
+   .data_b(0),
+   .q_b(tape_buf_out)
+);
+   
+   
+always @(posedge clk) begin
+   old_read_addr <= addr;  
+   old_ioctl_download <= ioctl_download;                             // Used to detect transitions
+   
+   if(ioctl_download) begin                                          // Detect end of download
+       read_counter <= 32'b0;
    end
-	
-   else if(old_read_addr != addr && addr == 16'h87ff) begin				// Detect when the Orao reads a new byte (access to 0x87ff)
-      read_counter <= ~read_counter; 
-      if (~read_counter)															// Slow down input so it's not too fast for the read-out routine.
-			ioctl_wait <= 1'b0;
-         
-      timeout <= 32'b0;    
+   
+   /* read_counter contains:
+      [24:9] - temporary tape buffer address, 
+      [8:6]  - current bit pointer in byte received, 
+      [5:0]  - bits read by loader per 1 bit of tap file, outputting msb generates Manchester encoding that loader interprets
+   */
+   
+   if (addr == 16'h87ff && old_read_addr != 16'h87ff) begin
+      read_counter <= read_counter + (tape_buf_out[read_counter[8:6]] ? 32'd1 : 32'd2);
    end
-	
-   else if (addr == 16'h87ff)														// 0x87ff is used to access current bit coming in from tape
-      data_out <= tape_data_out;
-         
-   else if (addr[15:11] == 5'b10000)											// Addresses with 0b10000 in high bits are for reading the keyboard
+   
+   if(addr == 16'h87ff) begin                                        // 0x87ff is used to read from the tape
+      data_out <= read_counter[5] ? 8'hff : 8'h00;
+   end
+   
+   else if (addr[15:11] == 5'b10000)                                 // Addresses with 0b10000 in high bits are for reading the keyboard
       data_out <= kbd_data_out;     
       
    else
-      data_out <= 8'hff;   														// This handles the remaining address space, return all ones.
-		
-	
-	if (ce && addr[15:11] == 5'b10001)
-		audio <= ~audio;																// When location with 10001 in address high bits is read or 
-																							// written, flip-flop is switched. Used to generate audio.
+      data_out <= 8'hff;                                             // This handles the remaining address space, return all ones.
       
-   if(timeout > 32'd75000000) 						  							// After 1,5 seconds after last read from tape, disable 
-		ioctl_wait <= 0;																// ioctl_wait to remove the loading box from screen.
-end																						
+   if (ce && addr[15:11] == 5'b10001)
+      audio <= ~audio;                                               // When location with 10001 in address high bits is read or 
+                                                                     // written, flip-flop is switched. Used to generate audio.
+end                                                                  
 
 assign video_blank = 1'b0;
  

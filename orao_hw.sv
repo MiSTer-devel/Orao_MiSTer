@@ -38,6 +38,8 @@ module orao_hw
    output           pix,
    output           HSync,
    output           VSync,
+	output			  HBlank,
+	output			  VBlank,
    output           de,
 
    input  [10:0]    ps2_key,
@@ -47,9 +49,8 @@ module orao_hw
    input            ioctl_download,
    input   [7:0]    ioctl_index,
    input            ioctl_wr,
-   input  [24:0]    ioctl_addr,
+   input  [26:0]    ioctl_addr,
    input   [7:0]    ioctl_dout,
-   output           ioctl_wait,
    
    input            clk,
    input            ce_1m,
