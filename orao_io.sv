@@ -91,7 +91,7 @@ orao_tape_buf_ram tape_buf_ram(
 always @(posedge clk) begin
    old_read_addr <= addr;  
    old_ioctl_download <= ioctl_download;                             // Used to detect transitions
-   
+	
    if(ioctl_download) begin                                          // Detect end of download
        read_counter <= 32'b0;
    end
@@ -104,7 +104,8 @@ always @(posedge clk) begin
    
    if (addr == 16'h87ff && old_read_addr != 16'h87ff) begin
       read_counter <= read_counter + (tape_buf_out[read_counter[8:6]] ? 32'd1 : 32'd2);
-   end
+		audio <= read_counter[5];
+	end
    
    if(addr == 16'h87ff) begin                                        // 0x87ff is used to read from the tape
       data_out <= read_counter[5] ? 8'hff : 8'h00;
