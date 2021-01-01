@@ -1,4 +1,4 @@
-# Orao FPGA core for MiSTer
+# [Orao](https://en.wikipedia.org/wiki/Orao_(computer)) for MiSTer Platform
 
 This is a FPGA implementation of Orao, old Croatian computer from the 1980s. It is designed to run on the MiSTer retro gaming platform.
 
